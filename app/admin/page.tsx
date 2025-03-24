@@ -19,18 +19,19 @@ import {
   Eye,
   Heart,
   Plus,
+  Image,
+  FileText,
+  UserCircle,
 } from "lucide-react"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
-    totalCosplayers: 0,
-    totalGalleryItems: 0,
-    totalEvents: 0,
-    totalMessages: 0,
-    newCosplayers: 0,
-    newGalleryItems: 0,
-    pageViews: 0,
-    likes: 0,
+    cosplayers: 0,
+    galleryItems: 0,
+    events: 0,
+    messages: 0,
+    pages: 0,
+    users: 0,
   })
 
   const [isLoading, setIsLoading] = useState(true)
@@ -42,14 +43,12 @@ export default function AdminDashboard() {
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
       setStats({
-        totalCosplayers: 156,
-        totalGalleryItems: 432,
-        totalEvents: 28,
-        totalMessages: 47,
-        newCosplayers: 12,
-        newGalleryItems: 35,
-        pageViews: 12458,
-        likes: 3267,
+        cosplayers: 156,
+        galleryItems: 432,
+        events: 28,
+        messages: 47,
+        pages: 15,
+        users: 78,
       })
 
       setIsLoading(false)
@@ -78,38 +77,48 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        <StatsCard
-          title="Total Cosplayers"
-          value={stats.totalCosplayers}
-          description="Registered cosplayers"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <DashboardCard
+          title="Cosplayers"
+          value={stats.cosplayers}
           icon={<Users className="h-5 w-5" />}
+          description="Total cosplayers"
           href="/admin/cosplayers"
-          isLoading={isLoading}
         />
-        <StatsCard
+        <DashboardCard
           title="Gallery Items"
-          value={stats.totalGalleryItems}
-          description="Photos in gallery"
-          icon={<ImageIcon className="h-5 w-5" />}
+          value={stats.galleryItems}
+          icon={<Image className="h-5 w-5" />}
+          description="Total gallery items"
           href="/admin/gallery"
-          isLoading={isLoading}
         />
-        <StatsCard
-          title="Upcoming Events"
-          value={stats.totalEvents}
-          description="Scheduled events"
+        <DashboardCard
+          title="Events"
+          value={stats.events}
           icon={<Calendar className="h-5 w-5" />}
+          description="Total events"
           href="/admin/events"
-          isLoading={isLoading}
         />
-        <StatsCard
-          title="New Messages"
-          value={stats.totalMessages}
-          description="Unread contact messages"
+        <DashboardCard
+          title="Messages"
+          value={stats.messages}
           icon={<MessageSquare className="h-5 w-5" />}
+          description="Unread messages"
           href="/admin/messages"
-          isLoading={isLoading}
+        />
+        <DashboardCard
+          title="Pages"
+          value={stats.pages}
+          icon={<FileText className="h-5 w-5" />}
+          description="Custom pages"
+          href="/admin/pages"
+        />
+        <DashboardCard
+          title="Users"
+          value={stats.users}
+          icon={<UserCircle className="h-5 w-5" />}
+          description="Registered users"
+          href="/admin/users"
         />
       </div>
 
@@ -296,20 +305,18 @@ export default function AdminDashboard() {
 }
 
 // Stats Card Component
-function StatsCard({
+function DashboardCard({
   title,
   value,
-  description,
   icon,
+  description,
   href,
-  isLoading,
 }: {
   title: string
   value: number
-  description: string
   icon: React.ReactNode
+  description: string
   href: string
-  isLoading: boolean
 }) {
   return (
     <Card>
@@ -317,11 +324,7 @@ function StatsCard({
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            {isLoading ? (
-              <div className="h-8 w-16 bg-muted rounded animate-pulse" />
-            ) : (
-              <p className="text-2xl font-bold">{value.toLocaleString()}</p>
-            )}
+            <p className="text-2xl font-bold">{value.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">{description}</p>
           </div>
           <div className="p-2 bg-muted rounded-full">{icon}</div>

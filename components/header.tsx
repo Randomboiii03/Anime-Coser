@@ -17,9 +17,11 @@ import {
 import { cn } from "@/lib/utils"
 import { Menu, X } from "lucide-react"
 import { ModeToggle } from "./mode-toggle"
+import { useAuth } from "./auth-provider"
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, isAdmin } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -108,7 +110,23 @@ export default function Header() {
 
         <div className="flex items-center gap-4">
           <ModeToggle />
-          <Button className="hidden md:inline-flex bg-pink-600 hover:bg-pink-700">Contact Us</Button>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Link href="/admin" className="hidden md:inline-flex">
+                  <Button variant="outline">Admin</Button>
+                </Link>
+              )}
+              <Link href="/profile">
+                <Button className="hidden md:inline-flex bg-pink-600 hover:bg-pink-700">Profile</Button>
+              </Link>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button className="hidden md:inline-flex bg-pink-600 hover:bg-pink-700">Login</Button>
+            </Link>
+          )}
 
           {/* Mobile menu button */}
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -170,6 +188,35 @@ export default function Header() {
             >
               Contact Us
             </Link>
+
+            {user ? (
+              <>
+                <Link
+                  href="/profile"
+                  className="block rounded-md px-3 py-2 text-base font-medium hover:bg-muted"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="block rounded-md px-3 py-2 text-base font-medium hover:bg-muted"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                )}
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="block rounded-md px-3 py-2 text-base font-medium hover:bg-muted"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       )}

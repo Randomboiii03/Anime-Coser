@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const { path, tag, secret } = await request.json()
 
     // Verify the request has the correct secret
-    if (secret !== process.env.REVALIDATION_SECRET) {
+    if (secret !== process.env.NEXT_PUBLIC_REVALIDATION_SECRET) {
       return NextResponse.json({ message: "Invalid secret" }, { status: 401 })
     }
 

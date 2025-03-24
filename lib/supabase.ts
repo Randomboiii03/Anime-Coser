@@ -16,8 +16,13 @@ export const getServerSupabase = async () => {
   return createClient<Database>(supabaseUrl, supabaseServiceKey)
 }
 
+// Helper function to generate image URL
+export const getImageUrl = (bucket: string, imagePath: string): string => {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${imagePath}`
+}
+
 // Helper function to handle image uploads to Supabase Storage
-export const uploadImage = async (file: File, bucket: string, path: string): Promise<string | null> => {
+export const uploadImage = async (bucket: string, file: File, path: string): Promise<string | null> => {
   try {
     const fileExt = file.name.split(".").pop()
     const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`

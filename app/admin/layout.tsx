@@ -6,18 +6,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import {
-  LayoutDashboard,
-  Users,
-  ImageIcon,
-  Calendar,
-  MessageSquare,
-  FileText,
-  Settings,
-  LogOut,
-  Menu,
-  PenTool,
-} from "lucide-react"
+import { Users, Calendar, MessageSquare, FileText, Settings, LogOut, Menu, Home, Image } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -55,6 +44,16 @@ export default function AdminLayout({
     return <>{children}</>
   }
 
+  const navigationItems = [
+    { name: "Dashboard", href: "/admin", icon: Home },
+    { name: "Cosplayers", href: "/admin/cosplayers", icon: Users },
+    { name: "Gallery", href: "/admin/gallery", icon: Image },
+    { name: "Events", href: "/admin/events", icon: Calendar },
+    { name: "Pages", href: "/admin/pages", icon: FileText },
+    { name: "Messages", href: "/admin/messages", icon: MessageSquare },
+    { name: "Settings", href: "/admin/settings", icon: Settings },
+  ]
+
   return (
     <div className="flex min-h-screen bg-muted/20">
       {/* Desktop Sidebar */}
@@ -77,19 +76,9 @@ export default function AdminLayout({
 
           <ScrollArea className="flex-1 mt-6">
             <nav className="px-4 pb-4">
-              <SidebarLink href="/admin" icon={<LayoutDashboard size={20} />} label="Dashboard" pathname={pathname} />
-              <SidebarLink href="/admin/cosplayers" icon={<Users size={20} />} label="Cosplayers" pathname={pathname} />
-              <SidebarLink href="/admin/gallery" icon={<ImageIcon size={20} />} label="Gallery" pathname={pathname} />
-              <SidebarLink href="/admin/events" icon={<Calendar size={20} />} label="Events" pathname={pathname} />
-              <SidebarLink
-                href="/admin/messages"
-                icon={<MessageSquare size={20} />}
-                label="Messages"
-                pathname={pathname}
-              />
-              <SidebarLink href="/admin/blog" icon={<PenTool size={20} />} label="Blog" pathname={pathname} />
-              <SidebarLink href="/admin/pages" icon={<FileText size={20} />} label="Pages" pathname={pathname} />
-              <SidebarLink href="/admin/settings" icon={<Settings size={20} />} label="Settings" pathname={pathname} />
+              {navigationItems.map((item) => (
+                <SidebarLink key={item.name} href={item.href} icon={item.icon} label={item.name} pathname={pathname} />
+              ))}
 
               <Separator className="my-4" />
 
@@ -132,29 +121,15 @@ export default function AdminLayout({
 
             <ScrollArea className="flex-1 mt-6">
               <nav className="px-4 pb-4">
-                <SidebarLink href="/admin" icon={<LayoutDashboard size={20} />} label="Dashboard" pathname={pathname} />
-                <SidebarLink
-                  href="/admin/cosplayers"
-                  icon={<Users size={20} />}
-                  label="Cosplayers"
-                  pathname={pathname}
-                />
-                <SidebarLink href="/admin/gallery" icon={<ImageIcon size={20} />} label="Gallery" pathname={pathname} />
-                <SidebarLink href="/admin/events" icon={<Calendar size={20} />} label="Events" pathname={pathname} />
-                <SidebarLink
-                  href="/admin/messages"
-                  icon={<MessageSquare size={20} />}
-                  label="Messages"
-                  pathname={pathname}
-                />
-                <SidebarLink href="/admin/blog" icon={<PenTool size={20} />} label="Blog" pathname={pathname} />
-                <SidebarLink href="/admin/pages" icon={<FileText size={20} />} label="Pages" pathname={pathname} />
-                <SidebarLink
-                  href="/admin/settings"
-                  icon={<Settings size={20} />}
-                  label="Settings"
-                  pathname={pathname}
-                />
+                {navigationItems.map((item) => (
+                  <SidebarLink
+                    key={item.name}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.name}
+                    pathname={pathname}
+                  />
+                ))}
 
                 <Separator className="my-4" />
 

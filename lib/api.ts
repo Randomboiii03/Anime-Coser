@@ -143,39 +143,6 @@ export const getEventById = cache(async (id: number) => {
   return data
 })
 
-// Blog API
-export const getBlogPosts = cache(async ({ published = true, limit = 10, page = 1 } = {}) => {
-  let query = supabase
-    .from("blog_posts")
-    .select("*")
-    .order("published_at", { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
-
-  if (published) {
-    query = query.eq("published", true)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error("Error fetching blog posts:", error)
-    return []
-  }
-
-  return data
-})
-
-export const getBlogPostBySlug = cache(async (slug: string) => {
-  const { data, error } = await supabase.from("blog_posts").select("*").eq("slug", slug).single()
-
-  if (error) {
-    console.error(`Error fetching blog post with slug ${slug}:`, error)
-    return null
-  }
-
-  return data
-})
-
 // Pages API
 export const getPageBySlug = cache(async (slug: string) => {
   const { data, error } = await supabase.from("pages").select("*").eq("slug", slug).single()
