@@ -1,66 +1,84 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
 
-// Initialize the Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 
-// Create a single supabase client for the browser
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+// Check if we have the required environment variables
+const hasSupabaseCredentials = supabaseUrl && supabaseAnonKey
 
-// Helper function to get authenticated supabase client on the server
-export const getServerSupabase = async () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+// Create a regular supabase client for public operations
+export const supabase = hasSupabaseCredentials ? createClient<Database>(supabaseUrl, supabaseAnonKey) : null
 
-  return createClient<Database>(supabaseUrl, supabaseServiceKey)
-}
+// Create a supabase client with the service role key for admin operations
+// Only create if we have the service role key
+export const supabaseAdmin =
+  hasSupabaseCredentials && supabaseServiceKey ? createClient<Database>(supabaseUrl, supabaseServiceKey) : null
 
-// Helper function to generate image URL
-export const getImageUrl = (bucket: string, imagePath: string): string => {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${imagePath}`
-}
-
-// Helper function to handle image uploads to Supabase Storage
-export const uploadImage = async (bucket: string, file: File, path: string): Promise<string | null> => {
-  try {
-    const fileExt = file.name.split(".").pop()
-    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
-    const filePath = `${path}/${fileName}`
-
-    const { error: uploadError, data } = await supabase.storage.from(bucket).upload(filePath, file)
-
-    if (uploadError) {
-      console.error("Error uploading file:", uploadError)
-      return null
-    }
-
-    // Get public URL for the uploaded file
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(bucket).getPublicUrl(filePath)
-
-    return publicUrl
-  } catch (error) {
-    console.error("Error in upload process:", error)
-    return null
+// Helper function to get image URL from Supabase Storage
+export function getImageUrl(bucket: string, path: string | null): string {
+  if (!path) {
+    return `/api/placeholder?height=600&width=400`
   }
+
+  // If the path is already a full URL, return it
+  if (path.startsWith("http")) {
+    return path
+  }
+
+  // If we're in development or the path doesn't exist in storage, use a placeholder
+  if (!hasSupabaseCredentials || !supabase) {
+    return `/api/placeholder?height=600&width=400&text=${encodeURIComponent(path)}`
+  }
+
+  // Construct the Supabase storage URL
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+  return data.publicUrl
 }
 
-// Helper function to delete an image from Supabase Storage
-export const deleteImage = async (bucket: string, path: string): Promise<boolean> => {
+export async function getServerSupabase() {
+  if (!hasSupabaseCredentials || !supabaseServiceKey) {
+    console.error("Supabase credentials are missing. Please set the environment variables.")
+    // Return a mock client that will throw errors when used
+    return {
+      from: () => {
+        throw new Error("Supabase is not configured. Please set the environment variables.")
+      },
+      storage: {
+        from: () => {
+          throw new Error("Supabase is not configured. Please set the environment variables.")
+        },
+      },
+      auth: {
+        getUser: async () => {
+          throw new Error("Supabase is not configured. Please set the environment variables.")
+        },
+      },
+    } as any
+  }
+
+  return createClient<Database>(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+export async function uploadImage(bucket: string, fileName: string, file: File): Promise<{ data: any; error: any }> {
+  const serverSupabase = await getServerSupabase()
+
   try {
-    const { error } = await supabase.storage.from(bucket).remove([path])
+    const { data, error } = await serverSupabase.storage.from(bucket).upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: false,
+    })
 
-    if (error) {
-      console.error("Error deleting file:", error)
-      return false
-    }
-
-    return true
+    return { data, error }
   } catch (error) {
-    console.error("Error in delete process:", error)
-    return false
+    console.error("Error uploading image:", error)
+    return { data: null, error: error as any }
   }
 }
 

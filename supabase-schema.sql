@@ -1,399 +1,132 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Create tables for the cosplay website
-
--- Users table (extends Supabase auth.users)
-CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    username TEXT UNIQUE NOT NULL,
-    display_name TEXT,
-    avatar_url TEXT,
-    bio TEXT,
-    website TEXT,
-    social_links JSONB,
-    is_admin BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+-- Create tables
+CREATE TABLE IF NOT EXISTS cosplayers (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  character TEXT NOT NULL,
+  series TEXT NOT NULL,
+  bio TEXT,
+  profile_image TEXT,
+  banner_image TEXT,
+  tags TEXT[] DEFAULT '{}',
+  social_links JSONB DEFAULT '{}',
+  popularity INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  location TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Cosplayers table
-CREATE TABLE IF NOT EXISTS public.cosplayers (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    bio TEXT,
-    profile_image TEXT,
-    gallery_images TEXT[],
-    featured BOOLEAN DEFAULT FALSE,
-    popularity INTEGER DEFAULT 0,
-    social_links JSONB,
-    anime_characters JSONB[],
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+CREATE TABLE IF NOT EXISTS gallery (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  cosplayer_id INTEGER REFERENCES cosplayers(id) ON DELETE CASCADE,
+  image_path TEXT,
+  tags TEXT[] DEFAULT '{}',
+  likes INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Gallery items table
-CREATE TABLE IF NOT EXISTS public.gallery_items (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    image_url TEXT NOT NULL,
-    cosplayer_id INTEGER REFERENCES public.cosplayers(id) ON DELETE CASCADE,
-    anime TEXT,
-    character TEXT,
-    likes INTEGER DEFAULT 0,
-    featured BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+CREATE TABLE IF NOT EXISTS events (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  location TEXT NOT NULL,
+  date DATE NOT NULL,
+  end_date DATE,
+  description TEXT,
+  image_path TEXT,
+  tags TEXT[] DEFAULT '{}',
+  event_type TEXT DEFAULT 'convention',
+  featured BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Events table
-CREATE TABLE IF NOT EXISTS public.events (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    location TEXT,
-    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    image_url TEXT,
-    website TEXT,
-    featured BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+CREATE TABLE IF NOT EXISTS pages (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  content TEXT NOT NULL,
+  published BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Pages table (for custom pages)
-CREATE TABLE IF NOT EXISTS public.pages (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    content TEXT NOT NULL,
-    meta_description TEXT,
-    published BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+CREATE TABLE IF NOT EXISTS messages (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Messages table (for contact form)
-CREATE TABLE IF NOT EXISTS public.messages (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    subject TEXT,
-    message TEXT NOT NULL,
-    status TEXT DEFAULT 'unread',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Create RLS policies
-
--- Profiles table policies
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public profiles are viewable by everyone"
-    ON public.profiles
-    FOR SELECT
-    USING (true);
-
-CREATE POLICY "Users can insert their own profile"
-    ON public.profiles
-    FOR INSERT
-    WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile"
-    ON public.profiles
-    FOR UPDATE
-    USING (auth.uid() = id);
-
--- Cosplayers table policies
-ALTER TABLE public.cosplayers ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Cosplayers are viewable by everyone"
-    ON public.cosplayers
-    FOR SELECT
-    USING (true);
-
-CREATE POLICY "Only admins can insert cosplayers"
-    ON public.cosplayers
-    FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can update cosplayers"
-    ON public.cosplayers
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can delete cosplayers"
-    ON public.cosplayers
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
--- Gallery items table policies
-ALTER TABLE public.gallery_items ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Gallery items are viewable by everyone"
-    ON public.gallery_items
-    FOR SELECT
-    USING (true);
-
-CREATE POLICY "Only admins can insert gallery items"
-    ON public.gallery_items
-    FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can update gallery items"
-    ON public.gallery_items
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can delete gallery items"
-    ON public.gallery_items
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
--- Events table policies
-ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Events are viewable by everyone"
-    ON public.events
-    FOR SELECT
-    USING (true);
-
-CREATE POLICY "Only admins can insert events"
-    ON public.events
-    FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can update events"
-    ON public.events
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can delete events"
-    ON public.events
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
--- Pages table policies
-ALTER TABLE public.pages ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Published pages are viewable by everyone"
-    ON public.pages
-    FOR SELECT
-    USING (published = true);
-
-CREATE POLICY "Admins can view all pages"
-    ON public.pages
-    FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can insert pages"
-    ON public.pages
-    FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can update pages"
-    ON public.pages
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can delete pages"
-    ON public.pages
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
--- Messages table policies
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can insert messages"
-    ON public.messages
-    FOR INSERT
-    WITH CHECK (true);
-
-CREATE POLICY "Only admins can view messages"
-    ON public.messages
-    FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can update messages"
-    ON public.messages
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
-CREATE POLICY "Only admins can delete messages"
-    ON public.messages
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-        )
-    );
-
--- Create sample data
-
--- Insert a sample admin user (you'll need to create this user in Auth first)
-INSERT INTO public.profiles (id, username, display_name, is_admin)
-VALUES 
-    ('00000000-0000-0000-0000-000000000000', 'admin', 'Admin User', true);
-
--- Insert sample cosplayers
-INSERT INTO public.cosplayers (name, slug, bio, profile_image, featured, popularity)
+-- Insert sample data
+-- Sample Cosplayers
+INSERT INTO cosplayers (name, character, series, bio, profile_image, tags, social_links, popularity, featured, location)
 VALUES
-    ('Misa Amane', 'misa-amane', 'Professional cosplayer specializing in anime characters', 'cosplayers/misa-amane.jpg', true, 100),
-    ('Rei Ayanami', 'rei-ayanami', 'Cosplayer focusing on Evangelion characters', 'cosplayers/rei-ayanami.jpg', true, 95),
-    ('Naruto Uzumaki', 'naruto-uzumaki', 'Specializes in Naruto and other shonen anime cosplays', 'cosplayers/naruto-uzumaki.jpg', false, 90);
+  ('Sakura Cosplay', 'Nezuko', 'Demon Slayer', 'Professional cosplayer specializing in anime characters', '/placeholder.svg?height=600&width=400&text=Sakura%20as%20Nezuko', ARRAY['Demon Slayer', 'Anime', 'Horror'], '{"instagram": "https://instagram.com/sakuracosplay", "twitter": "https://twitter.com/sakuracosplay"}', 120, true, 'Tokyo, Japan'),
+  ('Hiroshi Designs', 'Deku', 'My Hero Academia', 'Costume designer and cosplayer focusing on superhero anime', '/placeholder.svg?height=600&width=400&text=Hiroshi%20as%20Deku', ARRAY['My Hero Academia', 'Superhero', 'Action'], '{"instagram": "https://instagram.com/hiroshidesigns", "twitter": "https://twitter.com/hiroshidesigns"}', 95, true, 'Osaka, Japan'),
+  ('Anime Artisan', 'Mikasa', 'Attack on Titan', 'Specializing in detailed prop work and action poses', '/placeholder.svg?height=600&width=400&text=Artisan%20as%20Mikasa', ARRAY['Attack on Titan', 'Action', 'Dark Fantasy'], '{"instagram": "https://instagram.com/animeartisan", "twitter": "https://twitter.com/animeartisan"}', 110, true, 'Los Angeles, USA');
 
--- Insert sample gallery items
-INSERT INTO public.gallery_items (title, description, image_url, cosplayer_id, anime, character, featured)
+-- Sample Gallery Items
+INSERT INTO gallery (title, cosplayer_id, image_path, tags, likes, featured, description)
 VALUES
-    ('Death Note Cosplay', 'Misa Amane from Death Note', 'gallery/death-note-misa.jpg', 1, 'Death Note', 'Misa Amane', true),
-    ('Evangelion Cosplay', 'Rei Ayanami from Neon Genesis Evangelion', 'gallery/evangelion-rei.jpg', 2, 'Neon Genesis Evangelion', 'Rei Ayanami', true),
-    ('Naruto Sage Mode', 'Naruto in Sage Mode', 'gallery/naruto-sage.jpg', 3, 'Naruto Shippuden', 'Naruto Uzumaki', false);
+  ('Nezuko in the Forest', 1, '/placeholder.svg?height=800&width=600&text=Nezuko%20Forest', ARRAY['Demon Slayer', 'Nezuko', 'Forest'], 45, true, 'Nezuko character from Demon Slayer in a forest setting'),
+  ('Deku Hero Pose', 2, '/placeholder.svg?height=800&width=600&text=Deku%20Hero%20Pose', ARRAY['My Hero Academia', 'Deku', 'Action'], 38, true, 'Deku in his iconic hero pose from My Hero Academia'),
+  ('Mikasa Battle Ready', 3, '/placeholder.svg?height=800&width=600&text=Mikasa%20Battle', ARRAY['Attack on Titan', 'Mikasa', 'Action'], 52, true, 'Mikasa ready for battle with her ODM gear');
 
--- Insert sample events
-INSERT INTO public.events (title, description, location, start_date, end_date, image_url, featured)
+-- Sample Events
+INSERT INTO events (title, location, date, end_date, description, image_path, tags, event_type, featured)
 VALUES
-    ('Anime Expo 2023', 'The largest anime convention in North America', 'Los Angeles Convention Center', '2023-07-01 09:00:00', '2023-07-04 18:00:00', 'events/anime-expo.jpg', true),
-    ('Comic Con 2023', 'International comic convention with anime section', 'San Diego Convention Center', '2023-07-20 09:00:00', '2023-07-23 18:00:00', 'events/comic-con.jpg', true);
+  ('Anime Expo 2023', 'Los Angeles Convention Center', '2023-07-04', '2023-07-07', 'The largest anime convention in North America', '/placeholder.svg?height=400&width=800&text=Anime%20Expo', ARRAY['Convention', 'Competition', 'Panels'], 'convention', true),
+  ('Cosplay Craftsmanship Workshop', 'Tokyo Creative Space', '2023-08-12', '2023-08-12', 'Learn advanced techniques for cosplay creation', '/placeholder.svg?height=400&width=800&text=Cosplay%20Workshop', ARRAY['Workshop', 'Beginner Friendly', 'Crafting'], 'workshop', true),
+  ('Anime Fest', 'New York Comic Center', '2023-09-23', '2023-09-25', 'Celebration of anime culture with special guests', '/placeholder.svg?height=400&width=800&text=Anime%20Fest', ARRAY['Festival', 'Panels', 'Meetups'], 'convention', true);
 
--- Insert sample pages
-INSERT INTO public.pages (title, slug, content, published)
+-- Sample Pages
+INSERT INTO pages (title, slug, content, published)
 VALUES
-    ('About Us', 'about', '<h1>About AnimeCosu</h1><p>AnimeCosu is the ultimate destination for anime cosplay enthusiasts.</p>', true),
-    ('Privacy Policy', 'privacy-policy', '<h1>Privacy Policy</h1><p>This privacy policy explains how we use your personal data.</p>', true),
-    ('Terms of Service', 'terms-of-service', '<h1>Terms of Service</h1><p>By using our website, you agree to these terms of service.</p>', true);
+  ('About Us', 'about', '<h1>About Anime Cosplay Universe</h1><p>Welcome to the premier destination for anime cosplay enthusiasts! Our mission is to celebrate the creativity, craftsmanship, and passion that goes into creating amazing cosplay costumes and performances.</p><p>Founded in 2020, our community has grown to include thousands of cosplayers from around the world. We provide resources, tutorials, and a platform for cosplayers to showcase their work and connect with fellow enthusiasts.</p>', true),
+  ('Privacy Policy', 'privacy-policy', '<h1>Privacy Policy</h1><p>This Privacy Policy describes how your personal information is collected, used, and shared when you visit our website.</p><p>We collect information that you provide directly to us, such as when you create an account, subscribe to our newsletter, or contact us for support.</p>', true),
+  ('Terms of Service', 'terms-of-service', '<h1>Terms of Service</h1><p>By accessing our website, you agree to be bound by these terms of service and to comply with all applicable laws and regulations.</p><p>We may revise these terms of service at any time without notice. By continuing to use our website after any changes, you agree to be bound by the revised terms.</p>', true);
 
--- Create functions and triggers
+-- Set up Row Level Security (RLS)
+ALTER TABLE cosplayers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gallery ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+-- Create policies for public read access
+CREATE POLICY "Public can view published cosplayers" ON cosplayers FOR SELECT USING (true);
+CREATE POLICY "Public can view published gallery items" ON gallery FOR SELECT USING (true);
+CREATE POLICY "Public can view published events" ON events FOR SELECT USING (true);
+CREATE POLICY "Public can view published pages" ON pages FOR SELECT USING (published = true);
+
+-- Create policies for admin access
+CREATE POLICY "Admins can do everything with cosplayers" ON cosplayers USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can do everything with gallery" ON gallery USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can do everything with events" ON events USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can do everything with pages" ON pages USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can do everything with messages" ON messages USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Public can create messages" ON messages FOR INSERT WITH CHECK (true);
+
+-- Create function to increment gallery likes
+CREATE OR REPLACE FUNCTION increment_gallery_likes(item_id INT)
+RETURNS VOID AS $$
 BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
+  UPDATE gallery SET likes = likes + 1 WHERE id = item_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create triggers for all tables to update the updated_at column
-CREATE TRIGGER update_profiles_updated_at
-BEFORE UPDATE ON public.profiles
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_cosplayers_updated_at
-BEFORE UPDATE ON public.cosplayers
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_gallery_items_updated_at
-BEFORE UPDATE ON public.gallery_items
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_events_updated_at
-BEFORE UPDATE ON public.events
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_pages_updated_at
-BEFORE UPDATE ON public.pages
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_messages_updated_at
-BEFORE UPDATE ON public.messages
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Create function to handle user registration
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+-- Create function to increment cosplayer popularity
+CREATE OR REPLACE FUNCTION increment_cosplayer_popularity(cosplayer_id INT)
+RETURNS VOID AS $$
 BEGIN
-    INSERT INTO public.profiles (id, username, display_name, avatar_url)
-    VALUES (
-        NEW.id,
-        NEW.email,
-        NEW.raw_user_meta_data->>'full_name',
-        NEW.raw_user_meta_data->>'avatar_url'
-    );
-    RETURN NEW;
+  UPDATE cosplayers SET popularity = popularity + 1 WHERE id = cosplayer_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger for new user registration
-CREATE TRIGGER on_auth_user_created
-AFTER INSERT ON auth.users
-FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+$$ LANGUAGE plpgsql;
 

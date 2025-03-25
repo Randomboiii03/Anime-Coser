@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, FileText, Clock } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 export default function AdminPages() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -22,100 +23,97 @@ export default function AdminPages() {
   const [filteredPages, setFilteredPages] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch pages data
+  // Fetch pages
   useEffect(() => {
     const fetchPages = async () => {
-      // In a real app, you would fetch this data from your API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setIsLoading(true)
 
-      // Sample data
-      const data = [
-        {
-          id: 1,
-          title: "Home",
-          slug: "/",
-          lastUpdated: "2023-06-15T14:30:00",
-          updatedBy: "Admin User",
-        },
-        {
-          id: 2,
-          title: "About Us",
-          slug: "/about",
-          lastUpdated: "2023-06-10T09:45:00",
-          updatedBy: "Admin User",
-        },
-        {
-          id: 3,
-          title: "Cosplayers",
-          slug: "/cosplayers",
-          lastUpdated: "2023-06-08T16:20:00",
-          updatedBy: "Content Manager",
-        },
-        {
-          id: 4,
-          title: "Gallery",
-          slug: "/gallery",
-          lastUpdated: "2023-06-05T11:15:00",
-          updatedBy: "Admin User",
-        },
-        {
-          id: 5,
-          title: "Events",
-          slug: "/events",
-          lastUpdated: "2023-06-01T13:50:00",
-          updatedBy: "Content Manager",
-        },
-        {
-          id: 6,
-          title: "Contact Us",
-          slug: "/contact",
-          lastUpdated: "2023-05-28T10:30:00",
-          updatedBy: "Admin User",
-        },
-        {
-          id: 7,
-          title: "Privacy Policy",
-          slug: "/privacy",
-          lastUpdated: "2023-05-20T15:45:00",
-          updatedBy: "Admin User",
-        },
-        {
-          id: 8,
-          title: "Terms of Service",
-          slug: "/terms",
-          lastUpdated: "2023-05-20T15:30:00",
-          updatedBy: "Admin User",
-        },
-      ]
+      try {
+        const { data, error } = await supabase.from("pages").select("*").order("title", { ascending: true })
 
-      setPages(data)
-      setFilteredPages(data)
-      setIsLoading(false)
+        if (error) throw error
+
+        setPages(data || [])
+        setFilteredPages(data || [])
+      } catch (error) {
+        console.error("Error fetching pages:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     fetchPages()
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel("pages_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pages",
+        },
+        (payload) => {
+          // Refresh the data when changes occur
+          fetchPages()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // Filter pages
+  // Filter pages based on search term
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = pages.filter(
-        (page) =>
-          page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          page.slug.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-      setFilteredPages(filtered)
-    } else {
+    if (!searchTerm) {
       setFilteredPages(pages)
+      return
     }
+
+    const filtered = pages.filter(
+      (page) =>
+        page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        page.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        page.content?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+
+    setFilteredPages(filtered)
   }, [searchTerm, pages])
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  // Delete page
+  const handleDeletePage = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this page?")) return
+
+    try {
+      const { error } = await supabase.from("pages").delete().eq("id", id)
+
+      if (error) throw error
+
+      // Remove from local state
+      setPages(pages.filter((page) => page.id !== id))
+    } catch (error) {
+      console.error("Error deleting page:", error)
+    }
+  }
 
   return (
     <div className="p-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Pages</h1>
-          <p className="text-muted-foreground">Manage website pages and content</p>
+          <p className="text-muted-foreground">Manage your website pages</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Link href="/admin/pages/new">
@@ -128,15 +126,19 @@ export default function AdminPages() {
       </div>
 
       {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder="Search pages..."
-          className="pl-10"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search pages..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Pages Table */}
       <Card>
@@ -155,17 +157,16 @@ export default function AdminPages() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Page Title</TableHead>
-                  <TableHead>URL</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Slug</TableHead>
                   <TableHead>Last Updated</TableHead>
-                  <TableHead>Updated By</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPages.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                       No pages found
                     </TableCell>
                   </TableRow>
@@ -173,23 +174,10 @@ export default function AdminPages() {
                   filteredPages.map((page) => (
                     <TableRow key={page.id}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-muted rounded">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <span className="font-medium">{page.title}</span>
-                        </div>
+                        <div className="font-medium">{page.title}</div>
                       </TableCell>
-                      <TableCell>
-                        <code className="bg-muted px-2 py-1 rounded text-sm">{page.slug}</code>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{new Date(page.lastUpdated).toLocaleDateString()}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{page.updatedBy}</TableCell>
+                      <TableCell>/{page.slug}</TableCell>
+                      <TableCell>{formatDate(page.updated_at || page.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -200,20 +188,20 @@ export default function AdminPages() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Page
+                            <DropdownMenuItem asChild>
+                              <Link href={`/${page.slug}`} target="_blank">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <FileText className="mr-2 h-4 w-4" />
-                              Duplicate
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/pages/edit/${page.id}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeletePage(page.id)}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>

@@ -1,4 +1,15 @@
-"use client"
+import { getGalleryItems } from "@/lib/api/gallery"
+import GalleryClientComponent from "./gallery-client"
+
+export const revalidate = 3600 // Revalidate every hour
+
+export default async function GalleryPage() {
+  const galleryItems = await getGalleryItems()
+
+  return <GalleryClientComponent initialGalleryItems={galleryItems} />
+}
+// GalleryClient Component (moved from original GalleryPage)
+;("use client")
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
@@ -10,21 +21,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Heart, MessageCircle, Share2, X, ChevronLeft, ChevronRight } from "lucide-react"
 
-export default function GalleryPage() {
+interface GalleryItem {
+  id: number
+  title: string
+  cosplayer: string
+  image: string
+  tags: string[]
+  likes: number
+}
+
+interface GalleryClientProps {
+  initialGalleryItems: GalleryItem[]
+}
+
+function GalleryClientComponent({ initialGalleryItems }: GalleryClientProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
-  const [filteredGallery, setFilteredGallery] = useState(galleryItems)
+  const [filteredGallery, setFilteredGallery] = useState(initialGalleryItems)
   const [currentPage, setCurrentPage] = useState(1)
   const [likedItems, setLikedItems] = useState<number[]>([])
-  const [selectedImage, setSelectedImage] = useState<(typeof galleryItems)[0] | null>(null)
+  \
+  const [selectedImage, setSelectedImage<GalleryItem | null>] = useState(null)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
 
   const itemsPerPage = 12
 
   // Filter and sort gallery items
   useEffect(() => {
-    let result = [...galleryItems]
+    let result = [...initialGalleryItems]
 
     // Apply search filter
     if (searchTerm) {
@@ -59,7 +84,7 @@ export default function GalleryPage() {
 
     setFilteredGallery(result)
     setCurrentPage(1) // Reset to first page when filters change
-  }, [searchTerm, categoryFilter, sortBy])
+  }, [searchTerm, categoryFilter, sortBy, initialGalleryItems])
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage
@@ -80,7 +105,7 @@ export default function GalleryPage() {
     }
   }
 
-  const openFullscreen = (item: (typeof galleryItems)[0]) => {
+  const openFullscreen = (item: GalleryItem) => {
     setSelectedImage(item)
     setFullscreenIndex(filteredGallery.findIndex((i) => i.id === item.id))
   }
@@ -380,200 +405,4 @@ export default function GalleryPage() {
     </div>
   )
 }
-
-// Sample data
-const galleryItems = [
-  {
-    id: 1,
-    title: "Nezuko Kamado",
-    cosplayer: "Sakura Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Demon Slayer", "Nezuko"],
-    likes: 1245,
-  },
-  {
-    id: 2,
-    title: "Deku Hero Costume",
-    cosplayer: "Hiroshi Designs",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["My Hero Academia", "Deku"],
-    likes: 982,
-  },
-  {
-    id: 3,
-    title: "Mikasa Ackerman",
-    cosplayer: "Anime Artisan",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Attack on Titan", "Mikasa"],
-    likes: 876,
-  },
-  {
-    id: 4,
-    title: "Monkey D. Luffy",
-    cosplayer: "Cosplay King",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["One Piece", "Luffy"],
-    likes: 1102,
-  },
-  {
-    id: 5,
-    title: "Kakashi Hatake",
-    cosplayer: "Fantasy Forge",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Naruto", "Kakashi"],
-    likes: 934,
-  },
-  {
-    id: 6,
-    title: "Edward Elric",
-    cosplayer: "Anime Alchemist",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Fullmetal Alchemist", "Edward"],
-    likes: 756,
-  },
-  {
-    id: 7,
-    title: "Asuka Langley",
-    cosplayer: "Mecha Master",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Evangelion", "Asuka"],
-    likes: 689,
-  },
-  {
-    id: 8,
-    title: "Sailor Jupiter",
-    cosplayer: "Magical Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Sailor Moon", "Jupiter"],
-    likes: 723,
-  },
-  {
-    id: 9,
-    title: "Tanjiro Kamado",
-    cosplayer: "Blade Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Demon Slayer", "Tanjiro"],
-    likes: 1056,
-  },
-  {
-    id: 10,
-    title: "Bakugo Katsuki",
-    cosplayer: "Explosion Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["My Hero Academia", "Bakugo"],
-    likes: 945,
-  },
-  {
-    id: 11,
-    title: "Levi Ackerman",
-    cosplayer: "Scout Regiment",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Attack on Titan", "Levi"],
-    likes: 1320,
-  },
-  {
-    id: 12,
-    title: "Nico Robin",
-    cosplayer: "Pirate Queen",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["One Piece", "Robin"],
-    likes: 867,
-  },
-  {
-    id: 13,
-    title: "Hinata Hyuga",
-    cosplayer: "Ninja Way",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Naruto", "Hinata"],
-    likes: 789,
-  },
-  {
-    id: 14,
-    title: "Alphonse Elric",
-    cosplayer: "Anime Alchemist",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Fullmetal Alchemist", "Alphonse"],
-    likes: 678,
-  },
-  {
-    id: 15,
-    title: "Rei Ayanami",
-    cosplayer: "Mecha Master",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Evangelion", "Rei"],
-    likes: 712,
-  },
-  {
-    id: 16,
-    title: "Sailor Mercury",
-    cosplayer: "Magical Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Sailor Moon", "Mercury"],
-    likes: 654,
-  },
-  {
-    id: 17,
-    title: "Zenitsu Agatsuma",
-    cosplayer: "Blade Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Demon Slayer", "Zenitsu"],
-    likes: 932,
-  },
-  {
-    id: 18,
-    title: "Ochaco Uraraka",
-    cosplayer: "Explosion Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["My Hero Academia", "Uraraka"],
-    likes: 876,
-  },
-  {
-    id: 19,
-    title: "Eren Yeager",
-    cosplayer: "Scout Regiment",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Attack on Titan", "Eren"],
-    likes: 1089,
-  },
-  {
-    id: 20,
-    title: "Nami",
-    cosplayer: "Pirate Queen",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["One Piece", "Nami"],
-    likes: 943,
-  },
-  {
-    id: 21,
-    title: "Sasuke Uchiha",
-    cosplayer: "Ninja Way",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Naruto", "Sasuke"],
-    likes: 1156,
-  },
-  {
-    id: 22,
-    title: "Winry Rockbell",
-    cosplayer: "Anime Alchemist",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Fullmetal Alchemist", "Winry"],
-    likes: 645,
-  },
-  {
-    id: 23,
-    title: "Shinji Ikari",
-    cosplayer: "Mecha Master",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Evangelion", "Shinji"],
-    likes: 578,
-  },
-  {
-    id: 24,
-    title: "Sailor Venus",
-    cosplayer: "Magical Cosplay",
-    image: "/placeholder.svg?height=400&width=300",
-    tags: ["Sailor Moon", "Venus"],
-    likes: 687,
-  },
-]
 
